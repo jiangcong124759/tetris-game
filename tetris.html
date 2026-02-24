@@ -47,56 +47,58 @@
         .right-panel {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            min-width: 150px;
+            gap: 12px;
+            min-width: 140px;
+            max-height: 600px;
         }
         .info-box {
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 10px 12px;
             border: 1px solid rgba(0, 212, 255, 0.3);
         }
         .info-box h3 {
-            font-size: 0.9em;
+            font-size: 0.75em;
             color: #00d4ff;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .info-box .value {
-            font-size: 1.8em;
+            font-size: 1.4em;
             font-weight: bold;
         }
         .next-piece canvas {
-            width: 100px;
-            height: 70px;
+            width: 80px;
+            height: 60px;
         }
         .preview-queue {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: center;
+            flex-direction: row;
+            gap: 5px;
+            justify-content: center;
         }
         .preview-queue canvas {
             border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 5px;
+            border-radius: 4px;
             background: rgba(0, 0, 0, 0.3);
-        }
-        .preview-label {
-            font-size: 0.7em;
-            color: #888;
-            text-align: center;
-            margin-top: -5px;
+            width: 35px;
+            height: 35px;
         }
         .controls {
-            margin-top: 20px;
-            padding: 15px;
+            padding: 8px 10px;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            font-size: 0.85em;
-            line-height: 1.8;
+            border-radius: 8px;
+            font-size: 0.7em;
+            line-height: 1.5;
         }
         .controls h3 {
             color: #ff00ff;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 10px;
         }
         .controls span {
             color: #00d4ff;
@@ -143,24 +145,24 @@
         /* 排行榜样式 */
         .leaderboard {
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 8px 10px;
             border: 1px solid rgba(255, 215, 0, 0.3);
-            max-height: 200px;
+            max-height: 120px;
             overflow-y: auto;
         }
         .leaderboard h3 {
-            font-size: 0.9em;
+            font-size: 0.75em;
             color: #ffd700;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             text-align: center;
         }
         .leaderboard-item {
             display: flex;
             justify-content: space-between;
-            padding: 5px 0;
+            padding: 3px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.85em;
+            font-size: 0.75em;
         }
         .leaderboard-item:last-child {
             border-bottom: none;
@@ -237,51 +239,56 @@
 
         /* 音效控制样式 */
         .sound-control {
-            padding: 12px;
+            padding: 8px 10px;
         }
-        .sound-toggle {
-            margin-bottom: 10px;
+        .sound-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .sound-btn {
-            width: 100%;
-            padding: 8px;
+            padding: 5px 12px;
             background: linear-gradient(90deg, #00d4ff, #0099cc);
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #fff;
-            font-size: 0.9em;
+            font-size: 0.75em;
             cursor: pointer;
             transition: all 0.3s;
+            white-space: nowrap;
         }
         .sound-btn:hover {
             transform: scale(1.02);
-            box-shadow: 0 3px 15px rgba(0, 212, 255, 0.4);
+            box-shadow: 0 2px 10px rgba(0, 212, 255, 0.4);
         }
         .sound-btn.muted {
             background: linear-gradient(90deg, #666, #444);
         }
+        .volume-control {
+            flex: 1;
+        }
         .volume-control label {
             display: block;
-            font-size: 0.8em;
+            font-size: 0.7em;
             color: #00d4ff;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
         .volume-control input[type="range"] {
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
+            height: 4px;
+            border-radius: 2px;
             background: rgba(0, 212, 255, 0.3);
             outline: none;
             -webkit-appearance: none;
         }
         .volume-control input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: #00d4ff;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
         }
     </style>
 </head>
@@ -300,37 +307,43 @@
             <button id="startBtn" class="start-btn" onclick="game.start()">开始游戏</button>
         </div>
         <div class="right-panel">
+            <!-- 合并的游戏信息 -->
             <div class="info-box">
-                <h3>🏆 得分</h3>
-                <div id="score" class="value">0</div>
-            </div>
-            <div class="info-box">
-                <h3>🎯 等级</h3>
-                <div id="level" class="value">1</div>
-            </div>
-            <div class="info-box">
-                <h3>📊 消除行数</h3>
-                <div id="lines" class="value">0</div>
-            </div>
-            <div class="info-box next-piece">
-                <h3>🔮 即将出现</h3>
-                <div class="preview-queue">
-                    <canvas id="next1" width="100" height="70"></canvas>
-                    <canvas id="next2" width="100" height="70"></canvas>
-                    <canvas id="next3" width="100" height="70"></canvas>
+                <div style="display: flex; justify-content: space-between; text-align: center;">
+                    <div>
+                        <h3>🏆 得分</h3>
+                        <div id="score" class="value">0</div>
+                    </div>
+                    <div>
+                        <h3>等级</h3>
+                        <div id="level" class="value">1</div>
+                    </div>
+                    <div>
+                        <h3>行数</h3>
+                        <div id="lines" class="value">0</div>
+                    </div>
                 </div>
             </div>
+            
+            <!-- 下一个方块预览 -->
+            <div class="info-box next-piece">
+                <h3>🔮 下一个</h3>
+                <div class="preview-queue">
+                    <canvas id="next1" width="35" height="35"></canvas>
+                </div>
+            </div>
+            
             <!-- 音效控制 -->
             <div class="info-box sound-control">
-                <h3>🔊 音效设置</h3>
-                <div class="sound-toggle">
+                <div class="sound-row">
                     <button id="soundToggle" class="sound-btn" onclick="game.toggleSound()">🔊 开启</button>
-                </div>
-                <div class="volume-control">
-                    <label>音量: <span id="volumeValue">50%</span></label>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="50" onchange="game.setVolume(this.value)">
+                    <div class="volume-control">
+                        <label>音量: <span id="volumeValue">50%</span></label>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="50" onchange="game.setVolume(this.value)">
+                    </div>
                 </div>
             </div>
+            
             <!-- 本地排行榜 -->
             <div class="leaderboard">
                 <h3>🏅 排行榜 TOP5</h3>
@@ -338,14 +351,17 @@
                     <!-- 动态生成 -->
                 </div>
             </div>
+            
+            <!-- 操作说明 -->
             <div class="controls">
                 <h3>🎮 操作说明</h3>
-                <div><span>←</span> 左移</div>
-                <div><span>→</span> 右移</div>
-                <div><span>↓</span> 加速下落</div>
-                <div><span>↑</span> 旋转</div>
-                <div><span>空格</span> 直接落下</div>
-                <div><span>P</span> 暂停</div>
+                <div class="controls-grid">
+                    <div><span>←→</span> 移动</div>
+                    <div><span>↓</span> 加速</div>
+                    <div><span>↑</span> 旋转</div>
+                    <div><span>空格</span> 落下</div>
+                    <div><span>P</span> 暂停</div>
+                </div>
             </div>
         </div>
     </div>
@@ -537,12 +553,8 @@
             constructor() {
                 this.canvas = document.getElementById('game');
                 this.ctx = this.canvas.getContext('2d');
-                this.nextCanvases = [
-                    document.getElementById('next1'),
-                    document.getElementById('next2'),
-                    document.getElementById('next3')
-                ];
-                this.nextCtxs = this.nextCanvases.map(c => c.getContext('2d'));
+                this.nextCanvas = document.getElementById('next1');
+                this.nextCtx = this.nextCanvas.getContext('2d');
                 
                 // 排行榜
                 this.leaderboard = new Leaderboard();
@@ -606,13 +618,9 @@
                 this.dropInterval = 1000;
                 this.lastTime = 0;
                 
-                // 生成当前方块和预览队列(3个)
+                // 生成当前方块和下一个预览
                 this.currentPiece = this.generatePiece();
-                this.nextQueue = [
-                    this.generatePiece(),
-                    this.generatePiece(),
-                    this.generatePiece()
-                ];
+                this.nextPiece = this.generatePiece();
                 
                 this.updateUI();
                 document.getElementById('gameOver').classList.remove('show');
@@ -670,9 +678,9 @@
                     this.sounds.playDrop(); // 播放落地音效
                     this.clearLines();
                     
-                    // 从队列获取下一个方块
-                    this.currentPiece = this.nextQueue.shift();
-                    this.nextQueue.push(this.generatePiece());
+                    // 获取下一个方块
+                    this.currentPiece = this.nextPiece;
+                    this.nextPiece = this.generatePiece();
                     
                     if (this.collision()) {
                         this.endGame();
@@ -969,44 +977,42 @@
             }
             
             drawNextQueue() {
-                this.nextQueue.forEach((piece, index) => {
-                    const ctx = this.nextCtxs[index];
-                    const canvas = this.nextCanvases[index];
-                    
-                    // 清空画布
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    if (!piece) return;
-                    
-                    const { shape, color } = piece;
-                    const blockSize = 15;
-                    const offsetX = (canvas.width - shape[0].length * blockSize) / 2;
-                    const offsetY = (canvas.height - shape.length * blockSize) / 2;
-                    
-                    for (let row = 0; row < shape.length; row++) {
-                        for (let col = 0; col < shape[row].length; col++) {
-                            if (shape[row][col]) {
-                                const px = offsetX + col * blockSize;
-                                const py = offsetY + row * blockSize;
-                                
-                                // 主体
-                                ctx.fillStyle = color;
-                                ctx.fillRect(px + 1, py + 1, blockSize - 2, blockSize - 2);
-                                
-                                // 高光
-                                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                                ctx.fillRect(px + 1, py + 1, blockSize - 2, 2);
-                                ctx.fillRect(px + 1, py + 1, 2, blockSize - 2);
-                                
-                                // 阴影
-                                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                                ctx.fillRect(px + 1, py + blockSize - 3, blockSize - 2, 2);
-                                ctx.fillRect(px + blockSize - 3, py + 1, 2, blockSize - 2);
-                            }
+                const ctx = this.nextCtx;
+                const canvas = this.nextCanvas;
+                
+                // 清空画布
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (!this.nextPiece) return;
+                
+                const { shape, color } = this.nextPiece;
+                const blockSize = 8;
+                const offsetX = (canvas.width - shape[0].length * blockSize) / 2;
+                const offsetY = (canvas.height - shape.length * blockSize) / 2;
+                
+                for (let row = 0; row < shape.length; row++) {
+                    for (let col = 0; col < shape[row].length; col++) {
+                        if (shape[row][col]) {
+                            const px = offsetX + col * blockSize;
+                            const py = offsetY + row * blockSize;
+                            
+                            // 主体
+                            ctx.fillStyle = color;
+                            ctx.fillRect(px + 1, py + 1, blockSize - 2, blockSize - 2);
+                            
+                            // 高光
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                            ctx.fillRect(px + 1, py + 1, blockSize - 2, 1);
+                            ctx.fillRect(px + 1, py + 1, 1, blockSize - 2);
+                            
+                            // 阴影
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                            ctx.fillRect(px + 1, py + blockSize - 2, blockSize - 2, 1);
+                            ctx.fillRect(px + blockSize - 2, py + 1, 1, blockSize - 2);
                         }
                     }
-                });
+                }
             }
             
             updateUI() {
