@@ -234,6 +234,55 @@
             font-size: 1.3em;
             margin-bottom: 15px;
         }
+
+        /* 音效控制样式 */
+        .sound-control {
+            padding: 12px;
+        }
+        .sound-toggle {
+            margin-bottom: 10px;
+        }
+        .sound-btn {
+            width: 100%;
+            padding: 8px;
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .sound-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 15px rgba(0, 212, 255, 0.4);
+        }
+        .sound-btn.muted {
+            background: linear-gradient(90deg, #666, #444);
+        }
+        .volume-control label {
+            display: block;
+            font-size: 0.8em;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+        .volume-control input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(0, 212, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -271,6 +320,17 @@
                     <canvas id="next3" width="100" height="70"></canvas>
                 </div>
             </div>
+            <!-- 音效控制 -->
+            <div class="info-box sound-control">
+                <h3>🔊 音效设置</h3>
+                <div class="sound-toggle">
+                    <button id="soundToggle" class="sound-btn" onclick="game.toggleSound()">🔊 开启</button>
+                </div>
+                <div class="volume-control">
+                    <label>音量: <span id="volumeValue">50%</span></label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="50" onchange="game.setVolume(this.value)">
+                </div>
+            </div>
             <!-- 本地排行榜 -->
             <div class="leaderboard">
                 <h3>🏅 排行榜 TOP5</h3>
@@ -302,6 +362,120 @@
     </div>
 
     <script>
+        // 音效系统类
+        class SoundSystem {
+            constructor() {
+                this.enabled = true;
+                this.volume = 0.5;
+                this.audioContext = null;
+                this.initAudioContext();
+            }
+
+            initAudioContext() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.warn('Web Audio API not supported');
+                }
+            }
+
+            // 播放方块落地音效
+            playDrop() {
+                if (!this.enabled || !this.audioContext) return;
+                this.playTone(150, 0.05, 'square');
+            }
+
+            // 播放消除行音效
+            playClear(lines) {
+                if (!this.enabled || !this.audioContext) return;
+                const baseFreq = 300 + (lines - 1) * 100;
+                this.playTone(baseFreq, 0.15, 'sine');
+                setTimeout(() => this.playTone(baseFreq * 1.5, 0.15, 'sine'), 100);
+                if (lines >= 4) {
+                    setTimeout(() => this.playTone(baseFreq * 2, 0.3, 'sine'), 200);
+                }
+            }
+
+            // 播放游戏结束音效
+            playGameOver() {
+                if (!this.enabled || !this.audioContext) return;
+                const notes = [300, 250, 200, 150];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => this.playTone(freq, 0.3, 'sawtooth'), i * 200);
+                });
+            }
+
+            // 播放旋转音效
+            playRotate() {
+                if (!this.enabled || !this.audioContext) return;
+                this.playTone(400, 0.03, 'sine');
+            }
+
+            // 播放移动音效
+            playMove() {
+                if (!this.enabled || !this.audioContext) return;
+                this.playTone(200, 0.02, 'triangle');
+            }
+
+            // 播放硬降音效
+            playHardDrop() {
+                if (!this.enabled || !this.audioContext) return;
+                this.playTone(100, 0.1, 'square');
+            }
+
+            // 播放高分音效
+            playHighScore() {
+                if (!this.enabled || !this.audioContext) return;
+                const notes = [440, 554, 659, 880];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => this.playTone(freq, 0.15, 'sine'), i * 100);
+                });
+            }
+
+            // 播放暂停/恢复音效
+            playPause() {
+                if (!this.enabled || !this.audioContext) return;
+                this.playTone(350, 0.08, 'sine');
+            }
+
+            // 通用播放音调方法
+            playTone(frequency, duration, type = 'sine') {
+                if (!this.audioContext) return;
+                
+                // 恢复音频上下文（浏览器策略）
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = type;
+                gainNode.gain.value = this.volume;
+
+                // 添加淡入淡出效果
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(this.volume, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            setVolume(vol) {
+                this.volume = Math.max(0, Math.min(1, vol));
+            }
+        }
+
         // 本地排行榜管理类
         class Leaderboard {
             constructor() {
@@ -373,6 +547,9 @@
                 // 排行榜
                 this.leaderboard = new Leaderboard();
                 this.pendingScore = null; // 等待保存的分数
+                
+                // 音效系统
+                this.sounds = new SoundSystem();
                 
                 // 游戏配置
                 this.cols = 10;
@@ -490,6 +667,7 @@
                 if (this.collision()) {
                     this.currentPiece.y--;
                     this.merge();
+                    this.sounds.playDrop(); // 播放落地音效
                     this.clearLines();
                     
                     // 从队列获取下一个方块
@@ -510,6 +688,7 @@
                     this.currentPiece.y++;
                 }
                 this.currentPiece.y--;
+                this.sounds.playHardDrop(); // 播放硬降音效
                 this.drop();
             }
             
@@ -569,6 +748,7 @@
                     this.lines += linesCleared;
                     this.level = Math.floor(this.lines / 10) + 1;
                     this.dropInterval = Math.max(100, 1000 - (this.level - 1) * 100);
+                    this.sounds.playClear(linesCleared); // 播放消除行音效
                     this.updateUI();
                 }
             }
@@ -588,20 +768,25 @@
                         if (this.collision()) {
                             this.currentPiece.x--;
                             this.currentPiece.shape = originalShape;
+                            return; // 旋转失败，不播放音效
                         }
                     }
                 }
+                this.sounds.playRotate(); // 播放旋转音效
             }
             
             move(dir) {
                 this.currentPiece.x += dir;
                 if (this.collision()) {
                     this.currentPiece.x -= dir;
+                } else {
+                    this.sounds.playMove(); // 播放移动音效
                 }
             }
             
             endGame() {
                 this.gameOver = true;
+                this.sounds.playGameOver(); // 播放游戏结束音效
                 document.getElementById('finalScore').textContent = this.score;
                 
                 // 检查是否进入排行榜
@@ -624,6 +809,7 @@
                 const name = document.getElementById('playerNameInput').value;
                 if (name.trim()) {
                     this.leaderboard.addScore(name, this.pendingScore.score, this.pendingScore.level, this.pendingScore.lines);
+                    this.sounds.playHighScore(); // 播放高分音效
                     this.updateLeaderboardUI();
                 }
                 document.getElementById('nameInputModal').classList.remove('show');
@@ -658,6 +844,7 @@
             togglePause() {
                 if (this.gameOver) return;
                 this.paused = !this.paused;
+                this.sounds.playPause(); // 播放暂停/恢复音效
                 if (!this.paused) {
                     this.lastTime = performance.now();
                     this.update();
@@ -826,6 +1013,23 @@
                 document.getElementById('score').textContent = this.score.toLocaleString();
                 document.getElementById('level').textContent = this.level;
                 document.getElementById('lines').textContent = this.lines;
+            }
+
+            toggleSound() {
+                const enabled = this.sounds.toggle();
+                const btn = document.getElementById('soundToggle');
+                if (enabled) {
+                    btn.textContent = '🔊 开启';
+                    btn.classList.remove('muted');
+                } else {
+                    btn.textContent = '🔇 关闭';
+                    btn.classList.add('muted');
+                }
+            }
+
+            setVolume(value) {
+                this.sounds.setVolume(value / 100);
+                document.getElementById('volumeValue').textContent = value + '%';
             }
         }
         
