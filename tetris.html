@@ -104,6 +104,35 @@
             color: #00d4ff;
             font-weight: bold;
         }
+        
+        /* 定点消除样式 */
+        .bomb-box {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 65, 65, 0.1) 100%);
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+        .bomb-box h3 {
+            color: #ff6b6b !important;
+        }
+        .bomb-btn {
+            padding: 4px 12px;
+            background: linear-gradient(90deg, #ff6b6b, #ff4141);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 4px;
+        }
+        .bomb-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 3px 15px rgba(255, 107, 107, 0.4);
+        }
+        .bomb-btn:disabled {
+            background: linear-gradient(90deg, #666, #444);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
         button {
             padding: 12px 30px;
             font-size: 1.1em;
@@ -463,6 +492,20 @@
                 </div>
             </div>
             
+            <!-- 定点消除 -->
+            <div class="info-box bomb-box">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3>💣 定点消除</h3>
+                        <div style="font-size: 0.7em; color: #888;">每2000分获得1次</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div id="bombCount" class="value" style="color: #ff6b6b;">0</div>
+                        <button id="bombBtn" class="bomb-btn" onclick="game.useBomb()">使用 (B)</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 下一个方块预览 -->
             <div class="info-box next-piece">
                 <h3>🔮 下一个</h3>
@@ -756,6 +799,14 @@
                 this.dropInterval = 1000;
                 this.lastTime = 0;
                 
+                // 定点消除系统
+                this.bombScoreThreshold = 2000; // 每2000分获得一次定点消除
+                this.bombCharges = 0; // 可用的定点消除次数
+                this.lastBombScore = 0; // 上次触发定点消除时的分数
+                
+                // 初始化按钮状态
+                setTimeout(() => this.updateBombButton(), 0);
+                
                 // 生成当前方块和下一个预览
                 this.currentPiece = this.generatePiece();
                 this.nextPiece = this.generatePiece();
@@ -895,7 +946,58 @@
                     this.level = Math.floor(this.lines / 10) + 1;
                     this.dropInterval = Math.max(100, 1000 - (this.level - 1) * 100);
                     this.sounds.playClear(linesCleared); // 播放消除行音效
+                    
+                    // 检查是否获得定点消除奖励
+                    this.checkBombCharge();
+                    
                     this.updateUI();
+                }
+            }
+            
+            // 检查是否获得定点消除次数
+            checkBombCharge() {
+                const scoreSinceLastBomb = this.score - this.lastBombScore;
+                const newBombs = Math.floor(scoreSinceLastBomb / this.bombScoreThreshold);
+                if (newBombs > 0) {
+                    this.bombCharges += newBombs;
+                    this.lastBombScore += newBombs * this.bombScoreThreshold;
+                    this.sounds.playHighScore(); // 播放奖励音效
+                    this.updateBombButton();
+                }
+            }
+            
+            // 使用定点消除（消除底部3行）
+            useBomb() {
+                if (this.bombCharges <= 0 || this.gameOver || this.paused) return false;
+                
+                // 消除底部3行
+                let clearedCount = 0;
+                for (let row = this.rows - 1; row >= this.rows - 3 && row >= 0; row--) {
+                    if (this.board[row].some(cell => cell !== 0)) {
+                        this.board.splice(row, 1);
+                        this.board.unshift(Array(this.cols).fill(0));
+                        clearedCount++;
+                    }
+                }
+                
+                if (clearedCount > 0) {
+                    this.bombCharges--;
+                    this.lines += clearedCount;
+                    this.sounds.playClear(clearedCount); // 播放消除音效
+                    this.updateUI();
+                    this.updateBombButton();
+                    this.draw();
+                    return true;
+                }
+                return false;
+            }
+            
+            // 更新定点消除按钮状态
+            updateBombButton() {
+                const bombBtn = document.getElementById('bombBtn');
+                if (bombBtn) {
+                    bombBtn.disabled = this.bombCharges <= 0;
+                    bombBtn.textContent = this.bombCharges > 0 ? `使用 (B)` : '无可用次数';
                 }
             }
             
@@ -1157,6 +1259,13 @@
                 document.getElementById('score').textContent = this.score.toLocaleString();
                 document.getElementById('level').textContent = this.level;
                 document.getElementById('lines').textContent = this.lines;
+                // 更新定点消除次数显示
+                const bombEl = document.getElementById('bombCount');
+                if (bombEl) {
+                    bombEl.textContent = this.bombCharges;
+                }
+                // 更新定点消除按钮状态
+                this.updateBombButton();
             }
 
             toggleSound() {
@@ -1393,6 +1502,11 @@
                 case 'p':
                 case 'P':
                     game.togglePause();
+                    break;
+                case 'b':
+                case 'B':
+                    e.preventDefault();
+                    game.useBomb();
                     break;
             }
             game.draw();
