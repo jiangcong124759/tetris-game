@@ -508,9 +508,11 @@
             
             <!-- 下一个方块预览 -->
             <div class="info-box next-piece">
-                <h3>🔮 下一个</h3>
+                <h3>🔮 接下来 (Next 3)</h3>
                 <div class="preview-queue">
                     <canvas id="next1" width="35" height="35"></canvas>
+                    <canvas id="next2" width="35" height="35"></canvas>
+                    <canvas id="next3" width="35" height="35"></canvas>
                 </div>
             </div>
             
@@ -734,8 +736,13 @@
             constructor() {
                 this.canvas = document.getElementById('game');
                 this.ctx = this.canvas.getContext('2d');
-                this.nextCanvas = document.getElementById('next1');
-                this.nextCtx = this.nextCanvas.getContext('2d');
+                // 预览队列画布(3个)
+                this.nextCanvases = [
+                    document.getElementById('next1'),
+                    document.getElementById('next2'),
+                    document.getElementById('next3')
+                ];
+                this.nextCtxs = this.nextCanvases.map(c => c.getContext('2d'));
                 
                 // 排行榜
                 this.leaderboard = new Leaderboard();
@@ -807,9 +814,9 @@
                 // 初始化按钮状态
                 setTimeout(() => this.updateBombButton(), 0);
                 
-                // 生成当前方块和下一个预览
+                // 生成当前方块和预览队列(3个)
                 this.currentPiece = this.generatePiece();
-                this.nextPiece = this.generatePiece();
+                this.nextQueue = [this.generatePiece(), this.generatePiece(), this.generatePiece()];
                 
                 this.updateUI();
                 document.getElementById('gameOver').classList.remove('show');
@@ -867,9 +874,9 @@
                     this.sounds.playDrop(); // 播放落地音效
                     this.clearLines();
                     
-                    // 获取下一个方块
-                    this.currentPiece = this.nextPiece;
-                    this.nextPiece = this.generatePiece();
+                    // 获取下一个方块，从队列中取出并补充新的
+                    this.currentPiece = this.nextQueue.shift();
+                    this.nextQueue.push(this.generatePiece());
                     
                     if (this.collision()) {
                         this.endGame();
@@ -1217,42 +1224,58 @@
             }
             
             drawNextQueue() {
-                const ctx = this.nextCtx;
-                const canvas = this.nextCanvas;
-                
-                // 清空画布
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                if (!this.nextPiece) return;
-                
-                const { shape, color } = this.nextPiece;
-                const blockSize = 8;
-                const offsetX = (canvas.width - shape[0].length * blockSize) / 2;
-                const offsetY = (canvas.height - shape.length * blockSize) / 2;
-                
-                for (let row = 0; row < shape.length; row++) {
-                    for (let col = 0; col < shape[row].length; col++) {
-                        if (shape[row][col]) {
-                            const px = offsetX + col * blockSize;
-                            const py = offsetY + row * blockSize;
-                            
-                            // 主体
-                            ctx.fillStyle = color;
-                            ctx.fillRect(px + 1, py + 1, blockSize - 2, blockSize - 2);
-                            
-                            // 高光
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                            ctx.fillRect(px + 1, py + 1, blockSize - 2, 1);
-                            ctx.fillRect(px + 1, py + 1, 1, blockSize - 2);
-                            
-                            // 阴影
-                            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                            ctx.fillRect(px + 1, py + blockSize - 2, blockSize - 2, 1);
-                            ctx.fillRect(px + blockSize - 2, py + 1, 1, blockSize - 2);
+                // 绘制3个预览方块
+                for (let i = 0; i < 3; i++) {
+                    const ctx = this.nextCtxs[i];
+                    const canvas = this.nextCanvases[i];
+                    
+                    // 清空画布
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 根据位置设置透明度(第一个最清晰)
+                    const alpha = 1 - (i * 0.25);
+                    
+                    if (!this.nextQueue[i]) continue;
+                    
+                    const { shape, color } = this.nextQueue[i];
+                    const blockSize = 7;
+                    const offsetX = (canvas.width - shape[0].length * blockSize) / 2;
+                    const offsetY = (canvas.height - shape.length * blockSize) / 2;
+                    
+                    for (let row = 0; row < shape.length; row++) {
+                        for (let col = 0; col < shape[row].length; col++) {
+                            if (shape[row][col]) {
+                                const px = offsetX + col * blockSize;
+                                const py = offsetY + row * blockSize;
+                                
+                                // 主体(应用透明度)
+                                ctx.fillStyle = this.applyAlpha(color, alpha);
+                                ctx.fillRect(px + 1, py + 1, blockSize - 2, blockSize - 2);
+                                
+                                // 高光
+                                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * alpha})`;
+                                ctx.fillRect(px + 1, py + 1, blockSize - 2, 1);
+                                ctx.fillRect(px + 1, py + 1, 1, blockSize - 2);
+                                
+                                // 阴影
+                                ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * alpha})`;
+                                ctx.fillRect(px + 1, py + blockSize - 2, blockSize - 2, 1);
+                                ctx.fillRect(px + blockSize - 2, py + 1, 1, blockSize - 2);
+                            }
                         }
                     }
                 }
+            }
+            
+            // 辅助方法：给颜色应用透明度
+            applyAlpha(color, alpha) {
+                // 将hex颜色转换为rgb并应用alpha
+                const hex = color.replace('#', '');
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             }
             
             updateUI() {
