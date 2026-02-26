@@ -535,7 +535,17 @@
                 </div>
             </div>
             
-            <!-- 操作说明 -->
+            <!-- 存档/读档按钮 -->
+            <div class="info-box">
+                <h3>💾 游戏存档</h3>
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <button class="bomb-btn" onclick="game.saveGame()" style="flex: 1; font-size: 0.65em; padding: 6px;">保存 (S)</button>
+                    <button class="bomb-btn" id="loadBtn" onclick="game.loadGame()" style="flex: 1; font-size: 0.65em; padding: 6px; background: linear-gradient(90deg, #4CAF50, #2E7D32);">读取 (L)</button>
+                </div>
+                <div id="saveStatus" style="font-size: 0.65em; color: #888; margin-top: 4px; text-align: center;">暂无存档</div>
+            </div>
+            
+        <!-- 操作说明 -->
             <div class="controls">
                 <h3>🎮 操作说明</h3>
                 <div class="controls-grid">
@@ -544,6 +554,8 @@
                     <div><span>↑</span> 旋转</div>
                     <div><span>空格</span> 落下</div>
                     <div><span>P</span> 暂停</div>
+                    <div><span>S</span> 存档</div>
+                    <div><span>L</span> 读档</div>
                 </div>
             </div>
         </div>
@@ -792,6 +804,7 @@
                 this.reset();
                 this.draw();
                 this.updateLeaderboardUI();
+                this.updateLoadButton();
             }
             
             reset() {
@@ -1043,6 +1056,9 @@
                 this.gameOver = true;
                 this.sounds.playGameOver(); // 播放游戏结束音效
                 document.getElementById('finalScore').textContent = this.score;
+                
+                // 游戏结束时清除存档
+                this.clearSave();
                 
                 // 检查是否进入排行榜
                 if (this.leaderboard.isHighScore(this.score)) {
@@ -1307,6 +1323,134 @@
                 this.sounds.setVolume(value / 100);
                 document.getElementById('volumeValue').textContent = value + '%';
             }
+
+            // 保存游戏状态
+            saveGame() {
+                if (this.gameOver) {
+                    this.showSaveStatus('游戏已结束，无法存档', 'error');
+                    return;
+                }
+                
+                const gameState = {
+                    board: this.board,
+                    score: this.score,
+                    level: this.level,
+                    lines: this.lines,
+                    currentPiece: this.currentPiece,
+                    nextQueue: this.nextQueue,
+                    bombCharges: this.bombCharges,
+                    lastBombScore: this.lastBombScore,
+                    dropInterval: this.dropInterval,
+                    timestamp: new Date().toISOString()
+                };
+                
+                try {
+                    localStorage.setItem('tetris_save_game', JSON.stringify(gameState));
+                    this.showSaveStatus('游戏已保存！', 'success');
+                    this.sounds.playHighScore(); // 播放保存成功音效
+                    this.updateLoadButton();
+                } catch (e) {
+                    console.error('保存游戏失败:', e);
+                    this.showSaveStatus('保存失败', 'error');
+                }
+            }
+            
+            // 读取游戏状态
+            loadGame() {
+                try {
+                    const savedData = localStorage.getItem('tetris_save_game');
+                    if (!savedData) {
+                        this.showSaveStatus('没有找到存档', 'error');
+                        return;
+                    }
+                    
+                    const gameState = JSON.parse(savedData);
+                    
+                    // 恢复游戏状态
+                    this.board = gameState.board;
+                    this.score = gameState.score;
+                    this.level = gameState.level;
+                    this.lines = gameState.lines;
+                    this.currentPiece = gameState.currentPiece;
+                    this.nextQueue = gameState.nextQueue;
+                    this.bombCharges = gameState.bombCharges;
+                    this.lastBombScore = gameState.lastBombScore;
+                    this.dropInterval = gameState.dropInterval;
+                    this.gameOver = false;
+                    this.paused = true; // 加载后暂停，让玩家准备
+                    
+                    this.updateUI();
+                    this.updateBombButton();
+                    this.draw();
+                    this.showSaveStatus('游戏已恢复！按P继续', 'success');
+                    this.sounds.playHighScore(); // 播放读取成功音效
+                } catch (e) {
+                    console.error('读取游戏失败:', e);
+                    this.showSaveStatus('读取失败', 'error');
+                }
+            }
+            
+            // 检查是否有存档
+            hasSavedGame() {
+                try {
+                    const savedData = localStorage.getItem('tetris_save_game');
+                    if (!savedData) return false;
+                    const gameState = JSON.parse(savedData);
+                    // 检查存档是否有效（24小时内）
+                    const saveTime = new Date(gameState.timestamp);
+                    const now = new Date();
+                    const hoursDiff = (now - saveTime) / (1000 * 60 * 60);
+                    return hoursDiff < 24;
+                } catch (e) {
+                    return false;
+                }
+            }
+            
+            // 更新读档按钮状态
+            updateLoadButton() {
+                const loadBtn = document.getElementById('loadBtn');
+                if (loadBtn) {
+                    const hasSave = this.hasSavedGame();
+                    loadBtn.disabled = !hasSave;
+                    loadBtn.style.opacity = hasSave ? '1' : '0.5';
+                    
+                    // 显示存档信息
+                    const saveStatus = document.getElementById('saveStatus');
+                    if (saveStatus && hasSave) {
+                        try {
+                            const savedData = JSON.parse(localStorage.getItem('tetris_save_game'));
+                            const saveTime = new Date(savedData.timestamp);
+                            const timeStr = saveTime.toLocaleString('zh-CN', { 
+                                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                            });
+                            saveStatus.textContent = `存档: ${timeStr}`;
+                            saveStatus.style.color = '#4CAF50';
+                        } catch (e) {
+                            saveStatus.textContent = '有可用存档';
+                        }
+                    }
+                }
+            }
+            
+            // 显示保存状态消息
+            showSaveStatus(message, type) {
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) {
+                    statusEl.textContent = message;
+                    statusEl.style.color = type === 'success' ? '#4CAF50' : '#ff6b6b';
+                    
+                    // 3秒后恢复默认显示
+                    setTimeout(() => {
+                        this.updateLoadButton();
+                    }, 3000);
+                }
+            }
+            
+            // 清除存档（游戏结束时调用）
+            clearSave() {
+                localStorage.removeItem('tetris_save_game');
+                this.updateLoadButton();
+            }
         }
         
         // 初始化游戏
@@ -1530,6 +1674,22 @@
                 case 'B':
                     e.preventDefault();
                     game.useBomb();
+                    break;
+                case 's':
+                case 'S':
+                    // 防止在输入框中触发
+                    if (document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        game.saveGame();
+                    }
+                    break;
+                case 'l':
+                case 'L':
+                    // 防止在输入框中触发
+                    if (document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        game.loadGame();
+                    }
                     break;
             }
             game.draw();
